@@ -59,16 +59,21 @@ fn main() -> Result<(), err> {
         Ok(p) => p,
         _ => unreachable!(),
     };
-    let sink_path = format!("{}/{}{}", wd.to_str().unwrap(), input.sink, "/");
+    // let sink_path = format!("{}/{}", wd.to_str().unwrap(), input.sink);
     let backup_iter = enumerate_path(&input).into_par_iter();
     let targets = backup_iter
         .skip(1) // first entry is always the dir itself
         .map(|p| {
-            let input_path = format!("{:?}{:?}", wd.to_str().unwrap(), p.to_str().unwrap());
-            let output_path = format!("{:?}{:?}", sink_path, input_path);
+            let input_path = format!("{:?}/{:?}", wd.to_str().unwrap(), p.to_str().unwrap());
+            let output_path = format!(
+                "{:?}/{:?}/{:?}",
+                wd.to_str().unwrap(),
+                input.sink,
+                p.to_str().unwrap()
+            );
             (
                 String::from(input_path).replace("\"", ""),
-                output_path.replace("\"", ""),
+                output_path.replace("\"", "").replace("\\", ""),
             )
         })
         .collect::<Vec<(String, String)>>()
