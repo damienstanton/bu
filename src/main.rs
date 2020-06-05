@@ -11,6 +11,7 @@
 // limitations under the License.
 
 //! `bu` is a simple backup program
+use rayon::prelude::*;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use walkdir::{DirEntry, WalkDir};
@@ -39,8 +40,11 @@ fn enumerate_path(path: &str) -> Vec<PathBuf> {
 fn main() {
     let input = Flags::from_args();
     println!("Backing up {:#?} to {:#?}", input.source, input.sink);
-    println!(
-        "Contents of backup dir: {:#?}",
-        enumerate_path(&input.source)
-    )
+    let sink_path = format!("{}{}", input.sink, "/");
+    let backup_iter = enumerate_path(&input.source).into_par_iter();
+    let targets = backup_iter
+        .skip(1) // first entry is always the dir itself
+        .map(|p| format!("{:#?}{:#?}", sink_path, p))
+        .collect::<Vec<String>>();
+    println!("{:#?}", targets);
 }
