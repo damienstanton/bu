@@ -1,0 +1,11 @@
+[package]
+name = "bu"
+version = "0.1.0"
+authors = ["Damien Stanton <damien.stanton@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+rayon = "1"
+structopt = "0.3"
+confy = "0.4"
+"walkdir" = "2"
