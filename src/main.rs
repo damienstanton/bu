@@ -44,7 +44,11 @@ fn main() {
     let backup_iter = enumerate_path(&input.source).into_par_iter();
     let targets = backup_iter
         .skip(1) // first entry is always the dir itself
-        .map(|p| format!("{:#?}{:#?}", sink_path, p))
-        .collect::<Vec<String>>();
+        .map(|p| {
+            let input_path = p.to_str().unwrap();
+            let output_path = format!("{:?}{:?}", sink_path, input_path);
+            (String::from(input_path), output_path.replace("\"", ""))
+        })
+        .collect::<Vec<(String, String)>>();
     println!("{:#?}", targets);
 }
