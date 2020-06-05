@@ -12,24 +12,38 @@
 
 //! `bu` is a simple backup program
 use rayon::prelude::*;
-use std::path::PathBuf;
+use std::{
+    fs,
+    io::Error as err,
+    path::{Path, PathBuf},
+};
 use structopt::StructOpt;
 use walkdir::{DirEntry, WalkDir};
 
 #[derive(Debug, StructOpt)]
 /// configuration flags
-pub struct Flags {
+struct Flags {
     #[structopt(long, default_value = ".")]
     source: String,
     #[structopt(long)]
     sink: String,
+    #[structopt(long)]
+    include_hidden: bool,
 }
 
 /// enumerate directories in a given path, skipping hidden directories and files
-fn enumerate_path(path: &str) -> Vec<PathBuf> {
-    WalkDir::new(path)
+fn enumerate_path(input: &Flags) -> Vec<PathBuf> {
+    WalkDir::new(&input.source)
         .into_iter()
-        .filter_entry(|e: &DirEntry| e.file_name().to_str().map(|s| !s.starts_with(".")).unwrap())
+        .filter_entry(|e: &DirEntry| {
+            e.file_name()
+                .to_str()
+                .map(|s| match input.include_hidden {
+                    true => !s.is_empty(),
+                    false => !s.starts_with("."),
+                })
+                .unwrap()
+        })
         .filter_map(|e| e.ok())
         .collect::<Vec<DirEntry>>()
         .into_iter()
@@ -37,11 +51,11 @@ fn enumerate_path(path: &str) -> Vec<PathBuf> {
         .collect()
 }
 
-fn main() {
+fn main() -> Result<(), err> {
     let input = Flags::from_args();
     println!("Backing up {:#?} to {:#?}", input.source, input.sink);
     let sink_path = format!("{}{}", input.sink, "/");
-    let backup_iter = enumerate_path(&input.source).into_par_iter();
+    let backup_iter = enumerate_path(&input).into_par_iter();
     let targets = backup_iter
         .skip(1) // first entry is always the dir itself
         .map(|p| {
@@ -49,6 +63,17 @@ fn main() {
             let output_path = format!("{:?}{:?}", sink_path, input_path);
             (String::from(input_path), output_path.replace("\"", ""))
         })
-        .collect::<Vec<(String, String)>>();
+        .collect::<Vec<(String, String)>>()
+        .into_iter();
     println!("{:#?}", targets);
+    targets
+        .map(|f| {
+            println!("{:#?} and {:#?}", f.0, f.1);
+            if Path::new(&f.0).is_dir() {
+                fs::create_dir(&f.1)?
+            }
+            fs::copy(f.0, f.1)
+        })
+        .collect::<Result<Vec<u64>, err>>()?;
+    Ok(())
 }
