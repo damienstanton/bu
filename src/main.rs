@@ -13,6 +13,7 @@
 //! `bu` is a simple backup program
 use rayon::prelude::*;
 use std::{
+    env::current_dir,
     fs,
     io::Error as err,
     path::{Path, PathBuf},
@@ -53,15 +54,22 @@ fn enumerate_path(input: &Flags) -> Vec<PathBuf> {
 
 fn main() -> Result<(), err> {
     let input = Flags::from_args();
-    println!("Backing up {:#?} to {:#?}", input.source, input.sink);
-    let sink_path = format!("{}{}", input.sink, "/");
+    println!("backing up {:#?} to {:#?}", input.source, input.sink);
+    let wd = match current_dir() {
+        Ok(p) => p,
+        _ => unreachable!(),
+    };
+    let sink_path = format!("{}/{}{}", wd.to_str().unwrap(), input.sink, "/");
     let backup_iter = enumerate_path(&input).into_par_iter();
     let targets = backup_iter
         .skip(1) // first entry is always the dir itself
         .map(|p| {
-            let input_path = p.to_str().unwrap();
+            let input_path = format!("{:?}{:?}", wd.to_str().unwrap(), p.to_str().unwrap());
             let output_path = format!("{:?}{:?}", sink_path, input_path);
-            (String::from(input_path), output_path.replace("\"", ""))
+            (
+                String::from(input_path).replace("\"", ""),
+                output_path.replace("\"", ""),
+            )
         })
         .collect::<Vec<(String, String)>>()
         .into_iter();
@@ -70,8 +78,10 @@ fn main() -> Result<(), err> {
         .map(|f| {
             println!("{:#?} and {:#?}", f.0, f.1);
             if Path::new(&f.0).is_dir() {
+                println!("creating new dir {:?}", &f.1);
                 fs::create_dir(&f.1)?
             }
+            println!("copying {:?} to {:?}", &f.0, &f.1);
             fs::copy(f.0, f.1)
         })
         .collect::<Result<Vec<u64>, err>>()?;
