@@ -59,7 +59,6 @@ fn main() -> Result<(), err> {
         Ok(p) => p,
         _ => unreachable!(),
     };
-    // let sink_path = format!("{}/{}", wd.to_str().unwrap(), input.sink);
     let backup_iter = enumerate_path(&input).into_par_iter();
     let targets = backup_iter
         .skip(1) // first entry is always the dir itself
@@ -79,16 +78,23 @@ fn main() -> Result<(), err> {
         .collect::<Vec<(String, String)>>()
         .into_iter();
     println!("{:#?}", targets);
-    targets
+    let _ = targets
         .map(|f| {
             println!("{:#?} and {:#?}", f.0, f.1);
             if Path::new(&f.0).is_dir() {
                 println!("creating new dir {:?}", &f.1);
-                fs::create_dir(&f.1)?
+                match fs::create_dir_all(Path::new(&f.1)) {
+                    Ok(_) => 1u64,
+                    _ => 0u64,
+                }
+            } else {
+                println!("copying file {:?} to {:?}", &f.0, &f.1);
+                match fs::copy(Path::new(&f.0), Path::new(&f.1)) {
+                    Ok(n) => n,
+                    _ => 0u64,
+                }
             }
-            println!("copying {:?} to {:?}", &f.0, &f.1);
-            fs::copy(f.0, f.1)
         })
-        .collect::<Result<Vec<u64>, err>>()?;
+        .collect::<Vec<u64>>();
     Ok(())
 }
