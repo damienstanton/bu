@@ -54,7 +54,6 @@ fn enumerate_path(input: &Flags) -> Vec<PathBuf> {
 
 fn main() -> Result<(), err> {
     let input = Flags::from_args();
-    println!("backing up {:#?} to {:#?}", input.source, input.sink);
     let wd = match current_dir() {
         Ok(p) => p,
         _ => unreachable!(),
@@ -77,18 +76,14 @@ fn main() -> Result<(), err> {
         })
         .collect::<Vec<(String, String)>>()
         .into_iter();
-    println!("{:#?}", targets);
     let _ = targets
         .map(|f| {
-            println!("{:#?} and {:#?}", f.0, f.1);
             if Path::new(&f.0).is_dir() {
-                println!("creating new dir {:?}", &f.1);
                 match fs::create_dir_all(Path::new(&f.1)) {
                     Ok(_) => 1u64,
                     _ => 0u64,
                 }
             } else {
-                println!("copying file {:?} to {:?}", &f.0, &f.1);
                 match fs::copy(Path::new(&f.0), Path::new(&f.1)) {
                     Ok(n) => n,
                     _ => 0u64,
