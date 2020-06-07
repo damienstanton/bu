@@ -52,7 +52,7 @@ fn enumerate_path(input: &Flags) -> Vec<PathBuf> {
         .collect()
 }
 
-fn main() -> Result<(), err> {
+fn main() -> Result<(), Option<i32>> {
     let input = Flags::from_args();
     let wd = match current_dir() {
         Ok(p) => p,
@@ -76,20 +76,20 @@ fn main() -> Result<(), err> {
         })
         .collect::<Vec<(String, String)>>()
         .into_par_iter();
-    let _ = targets
+    targets
         .map(|f| {
             if Path::new(&f.0).is_dir() {
                 match fs::create_dir_all(Path::new(&f.1)) {
-                    Ok(_) => 1u64,
-                    _ => 0u64,
+                    Ok(_) => Ok(1u64),
+                    Err(e) => Err(err::raw_os_error(&e)),
                 }
             } else {
                 match fs::copy(Path::new(&f.0), Path::new(&f.1)) {
-                    Ok(n) => n,
-                    _ => 0u64,
+                    Ok(n) => Ok(n),
+                    Err(e) => Err(err::raw_os_error(&e)),
                 }
             }
         })
-        .collect::<Vec<u64>>();
+        .collect::<Result<Vec<u64>, Option<i32>>>()?;
     Ok(())
 }
