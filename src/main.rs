@@ -58,8 +58,8 @@ fn main() -> Result<(), Option<i32>> {
         Ok(p) => p,
         _ => unreachable!(),
     };
-    let backup_iter = enumerate_path(&input).into_par_iter();
-    let targets = backup_iter
+    enumerate_path(&Flags::from_args())
+        .into_par_iter()
         .skip(1) // first entry is always the dir itself
         .map(|p| {
             let input_path = format!("{:?}/{:?}", wd.to_str().unwrap(), p.to_str().unwrap());
@@ -75,8 +75,7 @@ fn main() -> Result<(), Option<i32>> {
             )
         })
         .collect::<Vec<(String, String)>>()
-        .into_par_iter();
-    targets
+        .into_par_iter()
         .map(|f| {
             if Path::new(&f.0).is_dir() {
                 match fs::create_dir_all(Path::new(&f.1)) {
