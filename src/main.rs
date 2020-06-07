@@ -47,7 +47,7 @@ fn enumerate_path(input: &Flags) -> Vec<PathBuf> {
         })
         .filter_map(|e| e.ok())
         .collect::<Vec<DirEntry>>()
-        .into_iter()
+        .into_par_iter()
         .map(|e| e.into_path())
         .collect()
 }
@@ -75,7 +75,7 @@ fn main() -> Result<(), err> {
             )
         })
         .collect::<Vec<(String, String)>>()
-        .into_iter();
+        .into_par_iter();
     let _ = targets
         .map(|f| {
             if Path::new(&f.0).is_dir() {
