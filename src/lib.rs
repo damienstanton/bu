@@ -11,6 +11,7 @@
 // limitations under the License.
 
 //! `bu` is a simple backup program
+use indicatif::ParallelProgressIterator;
 use rayon::prelude::*;
 use std::{
     fs,
@@ -75,6 +76,7 @@ pub fn generate_copy_pairs(input: &Flags, wd: PathBuf) -> Vec<(String, String)> 
 pub fn copy_all(pairs: Vec<(String, String)>) -> Result<Vec<u64>, Option<i32>> {
     pairs
         .into_par_iter()
+        .progress()
         .map(|f| {
             if Path::new(&f.0).is_dir() {
                 match fs::create_dir_all(Path::new(&f.1)) {
