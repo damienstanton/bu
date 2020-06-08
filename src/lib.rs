@@ -14,6 +14,7 @@
 use indicatif::ParallelProgressIterator;
 use rayon::prelude::*;
 use std::{
+    env::{current_dir, set_current_dir},
     fs,
     io::Error as err,
     path::{Path, PathBuf},
@@ -54,7 +55,10 @@ fn enumerate_path(input: &Flags) -> Vec<PathBuf> {
 /// Copies all data from `params.source` into `params.sink`. If source is not specified in the command-line arguments,
 /// the current working directory is assumed to be the directory being backed up. If any errors are encountered during
 /// the copy phase, the operation stops and the error is translated into the appropriate OS error value (an `i32`).
-pub fn copy_all(params: &Flags, wd: PathBuf) -> Result<Vec<u64>, Option<i32>> {
+pub fn copy_all(params: &Flags) -> Result<Vec<u64>, Option<i32>> {
+    let wd_path = Path::new(&params.source);
+    let _ = set_current_dir(wd_path);
+    let wd = current_dir().unwrap();
     enumerate_path(params)
         .into_par_iter()
         .skip(1) // first entry is always the dir itself

@@ -11,9 +11,8 @@
 // limitations under the License.
 
 use bu::{copy_all, Flags};
-use std::env::current_dir;
 use structopt::StructOpt;
 fn main() -> Result<(), Option<i32>> {
-    copy_all(&Flags::from_args(), current_dir().unwrap())?;
+    copy_all(&Flags::from_args())?;
     Ok(())
 }
