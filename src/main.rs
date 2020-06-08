@@ -10,16 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use bu::{copy_all, generate_copy_pairs, Flags};
+use bu::{copy_all, Flags};
 use std::env::current_dir;
 use structopt::StructOpt;
 fn main() -> Result<(), Option<i32>> {
-    let input = Flags::from_args();
-    let wd = match current_dir() {
-        Ok(p) => p,
-        _ => unreachable!(),
-    };
-    let pairs = generate_copy_pairs(&input, wd);
-    copy_all(pairs)?;
+    copy_all(&Flags::from_args(), current_dir().unwrap())?;
     Ok(())
 }

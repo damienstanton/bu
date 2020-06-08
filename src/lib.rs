@@ -22,7 +22,7 @@ use structopt::StructOpt;
 use walkdir::{DirEntry, WalkDir};
 
 #[derive(Debug, StructOpt)]
-/// configuration flags
+/// Parameters used to determine the source and target directories for backups
 pub struct Flags {
     #[structopt(long, default_value = ".")]
     source: String,
@@ -51,9 +51,11 @@ fn enumerate_path(input: &Flags) -> Vec<PathBuf> {
         .collect()
 }
 
-/// creates a tuple of input path to output path
-pub fn generate_copy_pairs(input: &Flags, wd: PathBuf) -> Vec<(String, String)> {
-    enumerate_path(input)
+/// Copies all data from `params.source` into `params.sink`. If source is not specified in the command-line arguments,
+/// the current working directory is assumed to be the directory being backed up. If any errors are encountered during
+/// the copy phase, the operation stops and the error is translated into the appropriate OS error value (an `i32`).
+pub fn copy_all(params: &Flags, wd: PathBuf) -> Result<Vec<u64>, Option<i32>> {
+    enumerate_path(params)
         .into_par_iter()
         .skip(1) // first entry is always the dir itself
         .map(|p| {
@@ -61,7 +63,7 @@ pub fn generate_copy_pairs(input: &Flags, wd: PathBuf) -> Vec<(String, String)> 
             let output_path = format!(
                 "{:?}/{:?}/{:?}",
                 wd.to_str().unwrap(),
-                input.sink,
+                params.sink,
                 p.to_str().unwrap()
             );
             (
@@ -70,11 +72,6 @@ pub fn generate_copy_pairs(input: &Flags, wd: PathBuf) -> Vec<(String, String)> 
             )
         })
         .collect::<Vec<(String, String)>>()
-}
-
-/// copies source directories and files into the target tree
-pub fn copy_all(pairs: Vec<(String, String)>) -> Result<Vec<u64>, Option<i32>> {
-    pairs
         .into_par_iter()
         .progress()
         .map(|f| {
