@@ -66,26 +66,19 @@ fn collect_pairs(params: &Flags) -> Vec<(String, String)> {
             (String::from(path_str), final_target_str)
         })
         .collect::<Vec<(String, String)>>();
-    if params.debug {
-        println!("pairs: {:#?}", pairs);
-    }
     pairs
 }
 
 fn create_dirs(pairs: &Vec<(String, String)>) -> Result<Vec<u64>, err> {
-    let mut vs: Vec<u64> = Vec::new();
     for p in pairs {
-        let path = Path::new(&p.0);
-        if path.is_dir() {
-            match fs::create_dir_all(Path::new(&p.1)) {
-                Ok(_) => {
-                    vs.push(1u64);
-                }
-                Err(_) => eprintln!("Could create dir {}", &p.1),
-            };
+        let source = Path::new(&p.0);
+        let path = Path::new(&p.1);
+        if source.is_dir() && !path.exists() {
+            fs::create_dir_all(path)?;
         }
     }
-    Ok(vs)
+
+    Ok(vec![1u64])
 }
 
 /// Copies all data from `params.source` into `params.sink`. If source is not specified in the command-line arguments,
@@ -96,17 +89,14 @@ pub fn copy_all(params: &Flags) -> Result<Vec<u64>, err> {
     create_dirs(&pairs)?;
     pairs
         .into_par_iter()
-        .progress()
         .filter(|f| Path::new(&f.0).canonicalize().unwrap().is_file())
-        .map(|f| {
-            println!("Copying {} to {}", &f.0, &f.1);
-            match fs::copy(Path::new(&f.0), Path::new(&f.1)) {
-                Ok(n) => Ok(n),
-                Err(e) => {
-                    println!("Could not copy {} to {}", &f.0, &f.1);
-                    Err(err::from_raw_os_error(e.raw_os_error().unwrap()))
-                }
+        .map(|f| match fs::copy(Path::new(&f.0), Path::new(&f.1)) {
+            Ok(n) => Ok(n),
+            Err(e) => {
+                println!("Could not copy {} to {}", &f.0, &f.1);
+                Err(err::from_raw_os_error(e.raw_os_error().unwrap()))
             }
         })
+        .progress()
         .collect::<Result<Vec<u64>, err>>()
 }
