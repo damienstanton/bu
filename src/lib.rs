@@ -14,7 +14,6 @@
 use indicatif::ParallelProgressIterator;
 use rayon::prelude::*;
 use std::{
-    env::{current_dir, set_current_dir},
     fs,
     io::Error as err,
     path::{Path, PathBuf},
@@ -52,39 +51,37 @@ fn enumerate_path(input: &Flags) -> Vec<PathBuf> {
         .collect()
 }
 
-/// Copies all data from `params.source` into `params.sink`. If source is not specified in the command-line arguments,
-/// the current working directory is assumed to be the directory being backed up. If any errors are encountered during
-/// the copy phase, the operation stops and the error is translated into the appropriate OS error value (an `i32`).
-pub fn copy_all(params: &Flags) -> Result<Vec<u64>, Option<i32>> {
-    let wd_path = Path::new(&params.source);
-    let _ = set_current_dir(wd_path);
-    let wd = current_dir().unwrap();
+fn collect_pairs(params: &Flags) -> Vec<(String, String)> {
     enumerate_path(params)
         .into_par_iter()
         .skip(1) // first entry is always the dir itself
         .map(|p| {
-            let input_path = format!("{:?}/{:?}", wd.to_str().unwrap(), p.to_str().unwrap());
-            let output_path = format!(
-                "{:?}/{:?}/{:?}",
-                wd.to_str().unwrap(),
-                params.sink,
-                p.to_str().unwrap()
-            );
-            (
-                String::from(input_path).replace("\"", ""),
-                output_path.replace("\"", "").replace("\\", ""),
-            )
+            let path = p.canonicalize().unwrap();
+            let path_str = path.to_str().unwrap();
+            let target_path = Path::new(&params.sink).canonicalize().unwrap();
+            let target_str = target_path.to_str().unwrap();
+            let final_target_str = String::from(format!("{}/{}", target_str, p.to_str().unwrap()));
+            (String::from(path_str), final_target_str)
         })
         .collect::<Vec<(String, String)>>()
+}
+
+/// Copies all data from `params.source` into `params.sink`. If source is not specified in the command-line arguments,
+/// the current working directory is assumed to be the directory being backed up. If any errors are encountered during
+/// the copy phase, the operation stops and the error is translated into the appropriate OS error value (an `i32`).
+pub fn copy_all(params: &Flags) -> Result<Vec<u64>, Option<i32>> {
+    collect_pairs(params)
         .into_par_iter()
         .progress()
         .map(|f| {
             if Path::new(&f.0).is_dir() {
+                println!("Creating dir {}", &f.1);
                 match fs::create_dir_all(Path::new(&f.1)) {
                     Ok(_) => Ok(1u64),
                     Err(e) => Err(err::raw_os_error(&e)),
                 }
             } else {
+                println!("Copying {} to {}", &f.0, &f.1);
                 match fs::copy(Path::new(&f.0), Path::new(&f.1)) {
                     Ok(n) => Ok(n),
                     Err(e) => Err(err::raw_os_error(&e)),
