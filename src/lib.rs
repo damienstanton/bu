@@ -11,7 +11,7 @@
 // limitations under the License.
 
 //! `bu` is a simple backup program
-use indicatif::ParallelProgressIterator;
+use indicatif::{ParallelProgressIterator, ProgressBar};
 use rayon::prelude::*;
 use std::{
     fs,
@@ -66,27 +66,39 @@ fn collect_pairs(params: &Flags) -> Vec<(String, String)> {
         .collect::<Vec<(String, String)>>()
 }
 
+fn create_dirs(params: &Flags) -> Result<Vec<u64>, err> {
+    collect_pairs(params)
+        .into_par_iter()
+        .filter(|d| Path::new(&d.0).canonicalize().unwrap().is_dir())
+        .map(|d| match fs::create_dir_all(Path::new(&d.1)) {
+            Ok(_) => Ok(1u64),
+            Err(e) => {
+                println!("Could not create dir: {}", &d.1);
+                Err(err::from_raw_os_error(e.raw_os_error().unwrap()))
+            }
+        })
+        .collect::<Result<Vec<u64>, err>>()
+}
+
 /// Copies all data from `params.source` into `params.sink`. If source is not specified in the command-line arguments,
 /// the current working directory is assumed to be the directory being backed up. If any errors are encountered during
 /// the copy phase, the operation stops and the error is translated into the appropriate OS error value (an `i32`).
-pub fn copy_all(params: &Flags) -> Result<Vec<u64>, Option<i32>> {
+pub fn copy_all(params: &Flags) -> Result<Vec<u64>, err> {
+    let bar = ProgressBar::new_spinner();
+    create_dirs(params)?;
     collect_pairs(params)
         .into_par_iter()
-        .progress()
+        .filter(|f| Path::new(&f.0).canonicalize().unwrap().is_file())
         .map(|f| {
-            if Path::new(&f.0).is_dir() {
-                println!("Creating dir {}", &f.1);
-                match fs::create_dir_all(Path::new(&f.1)) {
-                    Ok(_) => Ok(1u64),
-                    Err(e) => Err(err::raw_os_error(&e)),
-                }
-            } else {
-                println!("Copying {} to {}", &f.0, &f.1);
-                match fs::copy(Path::new(&f.0), Path::new(&f.1)) {
-                    Ok(n) => Ok(n),
-                    Err(e) => Err(err::raw_os_error(&e)),
+            println!("Copying {} to {}", &f.0, &f.1);
+            match fs::copy(Path::new(&f.0), Path::new(&f.1)) {
+                Ok(n) => Ok(n),
+                Err(e) => {
+                    println!("Could not copy {} to {}", &f.0, &f.1);
+                    Err(err::from_raw_os_error(e.raw_os_error().unwrap()))
                 }
             }
         })
-        .collect::<Result<Vec<u64>, Option<i32>>>()
+        .progress_with(bar)
+        .collect::<Result<Vec<u64>, err>>()
 }

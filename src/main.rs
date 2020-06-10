@@ -12,7 +12,7 @@
 
 use bu::{copy_all, Flags};
 use structopt::StructOpt;
-fn main() -> Result<(), Option<i32>> {
+fn main() -> Result<(), std::io::Error> {
     copy_all(&Flags::from_args())?;
     Ok(())
 }
