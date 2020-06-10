@@ -24,12 +24,14 @@ use walkdir::{DirEntry, WalkDir};
 #[derive(Debug, StructOpt)]
 /// Parameters used to determine the source and target directories for backups
 pub struct Flags {
-    #[structopt(long, default_value = ".")]
+    #[structopt(long)]
     source: String,
     #[structopt(long)]
     sink: String,
     #[structopt(long)]
     include_hidden: bool,
+    #[structopt(long)]
+    debug: bool,
 }
 
 fn enumerate_path(input: &Flags) -> Vec<PathBuf> {
@@ -52,7 +54,7 @@ fn enumerate_path(input: &Flags) -> Vec<PathBuf> {
 }
 
 fn collect_pairs(params: &Flags) -> Vec<(String, String)> {
-    enumerate_path(params)
+    let pairs = enumerate_path(params)
         .into_par_iter()
         .skip(1) // first entry is always the dir itself
         .map(|p| {
@@ -63,7 +65,11 @@ fn collect_pairs(params: &Flags) -> Vec<(String, String)> {
             let final_target_str = String::from(format!("{}/{}", target_str, p.to_str().unwrap()));
             (String::from(path_str), final_target_str)
         })
-        .collect::<Vec<(String, String)>>()
+        .collect::<Vec<(String, String)>>();
+    if params.debug {
+        println!("pairs: {:#?}", pairs);
+    }
+    pairs
 }
 
 fn create_dirs(params: &Flags) -> Result<Vec<u64>, err> {
