@@ -72,28 +72,19 @@ fn collect_pairs(params: &Flags) -> Vec<(String, String)> {
     pairs
 }
 
-fn create_dirs(params: &Flags) -> Result<Vec<u64>, err> {
-    collect_pairs(params)
-        .into_par_iter()
-        .filter(|d| Path::new(&d.0).canonicalize().unwrap().is_dir())
-        .map(|d| match fs::create_dir_all(Path::new(&d.1)) {
-            Ok(_) => Ok(1u64),
-            Err(e) => {
-                println!("Could not create dir: {}", &d.1);
-                Err(err::from_raw_os_error(e.raw_os_error().unwrap()))
-            }
-        })
-        .collect::<Result<Vec<u64>, err>>()
+fn create_dirs(pairs: &Vec<(String, String)>) -> Result<Vec<u64>, err> {
+    // TODO: fix this
 }
 
 /// Copies all data from `params.source` into `params.sink`. If source is not specified in the command-line arguments,
 /// the current working directory is assumed to be the directory being backed up. If any errors are encountered during
 /// the copy phase, the operation stops and the error is translated into the appropriate OS error value (an `i32`).
 pub fn copy_all(params: &Flags) -> Result<Vec<u64>, err> {
-    let bar = ProgressBar::new_spinner();
-    create_dirs(params)?;
-    collect_pairs(params)
+    let pairs = collect_pairs(params);
+    create_dirs(&pairs)?;
+    pairs
         .into_par_iter()
+        .progress()
         .filter(|f| Path::new(&f.0).canonicalize().unwrap().is_file())
         .map(|f| {
             println!("Copying {} to {}", &f.0, &f.1);
@@ -105,6 +96,5 @@ pub fn copy_all(params: &Flags) -> Result<Vec<u64>, err> {
                 }
             }
         })
-        .progress_with(bar)
         .collect::<Result<Vec<u64>, err>>()
 }
