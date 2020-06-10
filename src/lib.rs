@@ -11,7 +11,7 @@
 // limitations under the License.
 
 //! `bu` is a simple backup program
-use indicatif::{ParallelProgressIterator, ProgressBar};
+use indicatif::ParallelProgressIterator;
 use rayon::prelude::*;
 use std::{
     fs,
@@ -73,7 +73,19 @@ fn collect_pairs(params: &Flags) -> Vec<(String, String)> {
 }
 
 fn create_dirs(pairs: &Vec<(String, String)>) -> Result<Vec<u64>, err> {
-    // TODO: fix this
+    let mut vs: Vec<u64> = Vec::new();
+    for p in pairs {
+        let path = Path::new(&p.0);
+        if path.is_dir() {
+            match fs::create_dir_all(Path::new(&p.1)) {
+                Ok(_) => {
+                    vs.push(1u64);
+                }
+                Err(_) => eprintln!("Could create dir {}", &p.1),
+            };
+        }
+    }
+    Ok(vs)
 }
 
 /// Copies all data from `params.source` into `params.sink`. If source is not specified in the command-line arguments,
