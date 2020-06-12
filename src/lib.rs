@@ -90,18 +90,15 @@ fn create_dirs(pairs: &Vec<(String, String)>) -> Result<Vec<u64>, err> {
 /// the copy phase, the operation stops and the error is translated into the appropriate OS error value (an `i32`).
 pub fn copy_all(params: &Flags) -> Result<Vec<u64>, err> {
     let pairs = collect_pairs(params);
-    let pb = ProgressBar::new_spinner();
+    let pair_len = pairs.len() as u64;
+    let pb = ProgressBar::new(pair_len);
     pb.enable_steady_tick(300);
-    pb.set_style(ProgressStyle::default_bar().template(
-        "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] ({pos}/{len}, ETA {eta})",
-    ));
-    pb.set_message(&format!("backing up {} to {}", params.source, params.sink));
+    pb.println(&format!("backing up {} to {}", params.source, params.sink));
 
     create_dirs(&pairs)?;
     pairs
         .into_par_iter()
         .filter(|f| Path::new(&f.0).canonicalize().unwrap().is_file())
-        .progress_with(pb)
         .map(|f| match fs::copy(Path::new(&f.0), Path::new(&f.1)) {
             Ok(n) => Ok(n),
             Err(e) => {
@@ -109,5 +106,6 @@ pub fn copy_all(params: &Flags) -> Result<Vec<u64>, err> {
                 Err(err::from_raw_os_error(e.raw_os_error().unwrap()))
             }
         })
+        .progress_with(pb)
         .collect::<Result<Vec<u64>, err>>()
 }
