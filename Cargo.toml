@@ -1,0 +1,16 @@
+[package]
+name = "bu"
+version = "0.1.0"
+authors = ["Damien Stanton <damien.stanton@gmail.com>"]
+edition = "2018"
+
+[[bin]]
+name = "bu"
+path = "src/main.rs"
+
+[dependencies]
+rayon = "1"
+structopt = "0.3"
+confy = "0.4"
+walkdir = "2"
+indicatif = { version = "0.14", features = ["with_rayon"] }
