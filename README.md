@@ -1,6 +1,6 @@
 # bu
 
-Simple, fast, and dumb backup program
+Simple, fast, and minimal backup program
 
 © 2020 Damien Stanton
 
